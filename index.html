@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Sensei - Asana Adoption Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --teal: #408897;
+            --coral: #F35B54;
+            --yellow: #FFC94B;
+            --grey: #678689;
+            --light-grey: #f5f7fa;
+            --white: #ffffff;
+            --dark-grey: #2c3e50;
+            --success: #27ae60;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--light-grey);
+            color: var(--dark-grey);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--teal), #5a9aab);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .logo-section p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .role-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .role-tab {
+            padding: 0.75rem 1.5rem;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .role-tab:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .role-tab.active {
+            background: white;
+            color: var(--teal);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard {
+            display: none;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: var(--grey);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .trend-up { color: var(--teal); }
+        .trend-down { color: var(--coral); }
+        .trend-stable { color: var(--grey); }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            height: 400px;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark-grey);
+        }
+
+        .chart-canvas {
+            height: 300px !important;
+        }
+
+        .section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark-grey);
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .team-card {
+            background: var(--light-grey);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--teal);
+        }
+
+        .team-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .team-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .adoption-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .score-excellent { color: var(--teal); }
+        .score-good { color: var(--yellow); }
+        .score-warning { color: var(--coral); }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--light-grey);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .alert-critical { background: var(--coral); }
+        .alert-warning { background: var(--yellow); }
+
+        .coaching-list {
+            list-style: none;
+        }
+
+        .coaching-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--light-grey);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .coaching-name {
+            font-weight: 600;
+        }
+
+        .coaching-issue {
+            color: var(--grey);
+            font-size: 0.9rem;
+        }
+
+        .coaching-score {
+            padding: 0.25rem 0.5rem;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .wins-challenges {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .wins-list, .challenges-list {
+            list-style: none;
+        }
+
+        .wins-list li, .challenges-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .wins-list li:before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--teal);
+            font-weight: bold;
+        }
+
+        .challenges-list li:before {
+            content: '⚠';
+            position: absolute;
+            left: 0;
+            color: var(--coral);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .convention-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--light-grey);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .convention-text {
+            flex: 1;
+        }
+
+        .convention-score {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-right: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .role-tabs {
+                flex-wrap: wrap;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .wins-challenges {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <h1>Remote Sensei</h1>
+                <p>Change Management &amp; Adoption Intelligence</p>
+            </div>
+            <div class="role-tabs">
+                <button class="role-tab active" data-role="executive">C-Level Executive</button>
+                <button class="role-tab" data-role="change-leader">Change Leader</button>
+                <button class="role-tab" data-role="manager">Department Manager</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- C-Level Executive Dashboard -->
+        <div class="dashboard active" id="executive">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--teal)">72%</div>
+                    <div class="metric-label">Overall Adoption Score</div>
+                    <div class="metric-trend trend-up">↗ +3% from last month</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--teal)">18hrs</div>
+                    <div class="metric-label">Time Saved Per Week</div>
+                    <div class="metric-trend trend-up">↗ +5hrs from last month</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--teal)">42%</div>
+                    <div class="metric-label">Email Reduction</div>
+                    <div class="metric-trend trend-up">↗ Exceeded 40% target</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--teal)">38/50</div>
+                    <div class="metric-label">Daily Active Users</div>
+                    <div class="metric-trend trend-up">↗ +16 since month 1</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Adoption Trend (17 Weeks)</div>
+                    <canvas id="adoptionChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Team Performance Overview</div>
+                    <canvas id="teamChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="wins-challenges">
+                <div class="section">
+                    <div class="section-title" style="color: var(--teal)">🎉 Top Wins</div>
+                    <ul class="wins-list">
+                        <li>QA team achieved 85% adoption milestone</li>
+                        <li>Email volume reduced by 42% company-wide</li>
+                        <li>Meeting action item capture up 65% since week 1</li>
+                        <li>38 employees now daily active (up from 22 in month 1)</li>
+                        <li>Engineering team perfect week with 100% due date compliance</li>
+                    </ul>
+                </div>
+                <div class="section">
+                    <div class="section-title" style="color: var(--coral)">⚠ Key Risks</div>
+                    <ul class="challenges-list">
+                        <li>Production team regression: 71% → 65% over 2 weeks</li>
+                        <li>12 employees still using email instead of task comments</li>
+                        <li>23% of active tasks missing due dates</li>
+                        <li>3 teams had meetings with no action items logged</li>
+                        <li>Task description quality declining (was 68%, now 61%)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Leader Dashboard -->
+        <div class="dashboard" id="change-leader">
+            <div class="section">
+                <div class="section-title">Team Health Scores</div>
+                <div class="teams-grid">
+                    <div class="team-card">
+                        <div class="team-name">Quality Assurance</div>
+                        <div class="team-stats">
+                            <span class="adoption-score score-excellent">85%</span>
+                            <span class="metric-trend trend-up">↗ Excellent</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 85%; background: var(--teal)"></div>
+                        </div>
+                    </div>
+                    <div class="team-card">
+                        <div class="team-name">Leadership &amp; Admin</div>
+                        <div class="team-stats">
+                            <span class="adoption-score score-excellent">82%</span>
+                            <span class="metric-trend trend-up">↗ Good</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 82%; background: var(--teal)"></div>
+                        </div>
+                    </div>
+                    <div class="team-card">
+                        <div class="team-name">Supply Chain</div>
+                        <div class="team-stats">
+                            <span class="adoption-score score-good">78%</span>
+                            <span class="metric-trend trend-stable">→ Stable</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 78%; background: var(--yellow)"></div>
+                        </div>
+                    </div>
+                    <div class="team-card">
+                        <div class="team-name">Engineering</div>
+                        <div class="team-stats">
+                            <span class="adoption-score score-good">71%</span>
+                            <span class="metric-trend trend-up">↗ Improving</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 71%; background: var(--yellow)"></div>
+                        </div>
+                    </div>
+                    <div class="team-card">
+                        <div class="team-name">Production Team</div>
+                        <div class="team-stats">
+                            <span class="adoption-score score-warning">65%</span>
+                            <span class="metric-trend trend-down">↘ Needs attention</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 65%; background: var(--coral)"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Convention Compliance</div>
+                    <canvas id="conventionChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Weekly Activity Heatmap</div>
+                    <canvas id="heatmapChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="section">
+                    <div class="section-title">⚠ Active Alerts</div>
+                    <div class="alert-item">
+                        <div class="alert-icon alert-warning">!</div>
+                        <div>
+                            <div>Production team activity dropped 15% this week</div>
+                            <small style="color: var(--grey)">Oct 21, 2025</small>
+                        </div>
+                    </div>
+                    <div class="alert-item">
+                        <div class="alert-icon alert-critical">!</div>
+                        <div>
+                            <div>3 high-priority tasks overdue without updates</div>
+                            <small style="color: var(--grey)">Oct 22, 2025</small>
+                        </div>
+                    </div>
+                    <div class="alert-item">
+                        <div class="alert-icon alert-warning">!</div>
+                        <div>
+                            <div>Leadership meeting on Oct 20 - no action items captured</div>
+                            <small style="color: var(--grey)">Oct 21, 2025</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">👥 Coaching Needed</div>
+                    <ul class="coaching-list">
+                        <li class="coaching-item">
+                            <div>
+                                <div class="coaching-name">Marcus Chen</div>
+                                <div class="coaching-issue">Last active 5 days ago</div>
+                            </div>
+                            <span class="coaching-score" style="background: var(--coral)">35</span>
+                        </li>
+                        <li class="coaching-item">
+                            <div>
+                                <div class="coaching-name">Lisa Wang</div>
+                                <div class="coaching-issue">Meeting notes not captured</div>
+                            </div>
+                            <span class="coaching-score" style="background: var(--coral)">45</span>
+                        </li>
+                        <li class="coaching-item">
+                            <div>
+                                <div class="coaching-name">Sarah Thompson</div>
+                                <div class="coaching-issue">Creates tasks without due dates</div>
+                            </div>
+                            <span class="coaching-score" style="background: var(--yellow); color: var(--dark-grey)">58</span>
+                        </li>
+                        <li class="coaching-item">
+                            <div>
+                                <div class="coaching-name">David Rodriguez</div>
+                                <div class="coaching-issue">Forwards emails instead of commenting</div>
+                            </div>
+                            <span class="coaching-score" style="background: var(--yellow); color: var(--dark-grey)">62</span>
+                        </li>
+                        <li class="coaching-item">
+                            <div>
+                                <div class="coaching-name">Tom Wilson</div>
+                                <div class="coaching-issue">Incomplete task descriptions</div>
+                            </div>
+                            <span class="coaching-score" style="background: var(--yellow); color: var(--dark-grey)">67</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Manager Dashboard -->
+        <div class="dashboard" id="manager">
+            <div class="section">
+                <div class="section-title">Production Team Focus (65% Adoption)</div>
+                <div class="metric-trend trend-down" style="margin-bottom: 1rem;">↘ Down from 71% two weeks ago - needs immediate attention</div>
+                
+                <div class="section">
+                    <div class="section-title">Convention Compliance - Production Team</div>
+                    <div class="convention-item">
+                        <div class="convention-text">
+                            <strong>Meeting action items in Asana within 24h</strong>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 55%; background: var(--coral)"></div>
+                            </div>
+                        </div>
+                        <span class="convention-score" style="color: var(--coral)">55%</span>
+                    </div>
+                    <div class="convention-item">
+                        <div class="convention-text">
+                            <strong>Use comments vs email for updates</strong>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 62%; background: var(--yellow)"></div>
+                            </div>
+                        </div>
+                        <span class="convention-score" style="color: var(--yellow)">62%</span>
+                    </div>
+                    <div class="convention-item">
+                        <div class="convention-text">
+                            <strong>Task descriptions answer What/Why/Who/When</strong>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 48%; background: var(--coral)"></div>
+                            </div>
+                        </div>
+                        <span class="convention-score" style="color: var(--coral)">48%</span>
+                    </div>
+                    <div class="convention-item">
+                        <div class="convention-text">
+                            <strong>Up-to-date due dates on all tasks</strong>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 71%; background: var(--yellow)"></div>
+                            </div>
+                        </div>
+                        <span class="convention-score" style="color: var(--yellow)">71%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Production Team - 2 Week Trend</div>
+                    <canvas id="prodTrendChart" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Individual Team Member Scores</div>
+                    <canvas id="memberChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Recent Meeting Action Items</div>
+                <div style="display: grid; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--light-grey); border-radius: 8px;">
+                        <span>Weekly production planning - 3 items</span>
+                        <span style="color: var(--teal); font-weight: 600;">✓ Captured</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--light-grey); border-radius: 8px;">
+                        <span>Safety review meeting - 5 items</span>
+                        <span style="color: var(--coral); font-weight: 600;">✗ Missing</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--light-grey); border-radius: 8px;">
+                        <span>Equipment maintenance discussion - 2 items</span>
+                        <span style="color: var(--teal); font-weight: 600;">✓ Captured</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--light-grey); border-radius: 8px;">
+                        <span>Quality control sync - 4 items</span>
+                        <span style="color: var(--yellow); font-weight: 600;">⏳ Partial</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Immediate Action Plan</div>
+                <ul style="list-style: none; gap: 0.5rem; display: flex; flex-direction: column;">
+                    <li style="padding: 0.75rem; background: #fef3f3; border-left: 4px solid var(--coral); border-radius: 4px;">
+                        <strong>1. Schedule 1:1 with Marcus Chen</strong> - Last active 5 days ago, needs engagement boost
+                    </li>
+                    <li style="padding: 0.75rem; background: #fef3f3; border-left: 4px solid var(--coral); border-radius: 4px;">
+                        <strong>2. Meeting notes training</strong> - Lisa Wang missing action item capture
+                    </li>
+                    <li style="padding: 0.75rem; background: #fff8e1; border-left: 4px solid var(--yellow); border-radius: 4px;">
+                        <strong>3. Task description workshop</strong> - Team scoring only 48% on What/Why/Who/When
+                    </li>
+                    <li style="padding: 0.75rem; background: #f0f8f4; border-left: 4px solid var(--teal); border-radius: 4px;">
+                        <strong>4. Celebrate wins</strong> - Acknowledge team members who are improving
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Role switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleTabs = document.querySelectorAll('.role-tab');
+            const dashboards = document.querySelectorAll('.dashboard');
+
+            roleTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and dashboards
+                    roleTabs.forEach(t => t.classList.remove('active'));
+                    dashboards.forEach(d => d.classList.remove('active'));
+
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+
+                    // Show corresponding dashboard
+                    const role = tab.getAttribute('data-role');
+                    document.getElementById(role).classList.add('active');
+
+                    // Re-render charts when switching views
+                    setTimeout(() => {
+                        initCharts();
+                    }, 100);
+                });
+            });
+
+            // Initialize charts
+            initCharts();
+        });
+
+        function initCharts() {
+            // Adoption Trend Chart
+            const adoptionCtx = document.getElementById('adoptionChart');
+            if (adoptionCtx) {
+                new Chart(adoptionCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Week 1', 'Week 3', 'Week 5', 'Week 7', 'Week 9', 'Week 11', 'Week 13', 'Week 15', 'Week 17'],
+                        datasets: [{
+                            label: 'Adoption Score',
+                            data: [35, 48, 58, 59, 66, 70, 71, 75, 72],
+                            borderColor: '#408897',
+                            backgroundColor: 'rgba(64, 136, 151, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Team Performance Chart
+            const teamCtx = document.getElementById('teamChart');
+            if (teamCtx) {
+                new Chart(teamCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Quality Assurance', 'Leadership & Admin', 'Supply Chain', 'Engineering', 'Production'],
+                        datasets: [{
+                            label: 'Adoption %',
+                            data: [85, 82, 78, 71, 65],
+                            backgroundColor: ['#408897', '#408897', '#FFC94B', '#FFC94B', '#F35B54'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Convention Compliance Chart
+            const conventionCtx = document.getElementById('conventionChart');
+            if (conventionCtx) {
+                new Chart(conventionCtx, {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: [
+                            'Action items within 24h',
+                            'Comments vs email',
+                            'Complete descriptions',
+                            'Updated due dates'
+                        ],
+                        datasets: [{
+                            data: [68, 74, 61, 79],
+                            backgroundColor: ['#FFC94B', '#408897', '#F35B54', '#408897'],
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Activity Heatmap (simplified as bar chart)
+            const heatmapCtx = document.getElementById('heatmapChart');
+            if (heatmapCtx) {
+                new Chart(heatmapCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                        datasets: [
+                            {
+                                label: 'Production',
+                                data: [45, 52, 38, 61, 44],
+                                backgroundColor: '#F35B54'
+                            },
+                            {
+                                label: 'QA',
+                                data: [78, 82, 85, 79, 81],
+                                backgroundColor: '#408897'
+                            },
+                            {
+                                label: 'Supply Chain',
+                                data: [68, 72, 75, 71, 69],
+                                backgroundColor: '#FFC94B'
+                            },
+                            {
+                                label: 'Engineering',
+                                data: [65, 69, 71, 74, 68],
+                                backgroundColor: '#678689'
+                            },
+                            {
+                                label: 'Leadership',
+                                data: [80, 78, 82, 85, 79],
+                                backgroundColor: '#5a9aab'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: false
+                            },
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Production Team Trend
+            const prodTrendCtx = document.getElementById('prodTrendChart');
+            if (prodTrendCtx) {
+                new Chart(prodTrendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['2 weeks ago', '10 days ago', '1 week ago', '5 days ago', '3 days ago', 'Today'],
+                        datasets: [{
+                            label: 'Production Team Adoption',
+                            data: [71, 69, 68, 66, 65, 65],
+                            borderColor: '#F35B54',
+                            backgroundColor: 'rgba(243, 91, 84, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                min: 60,
+                                max: 75,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Individual Member Scores
+            const memberCtx = document.getElementById('memberChart');
+            if (memberCtx) {
+                new Chart(memberCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Marcus C.', 'Lisa W.', 'John D.', 'Maria S.', 'Alex R.', 'Nina P.', 'Others (avg)'],
+                        datasets: [{
+                            data: [35, 45, 62, 71, 68, 74, 67],
+                            backgroundColor: [
+                                '#F35B54', '#F35B54', '#FFC94B', '#408897', '#FFC94B', '#408897', '#678689'
+                            ],
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
